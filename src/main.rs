@@ -30,22 +30,28 @@ struct Search {
     excluded_paths: Option<String>,
 }
 
-fn search_file(file: &DirEntry, wildcard: &WildMatch) -> () {
+fn search_file(file: &DirEntry, wildcard: &WildMatch) -> bool {
     if file.file_type().is_file() && wildcard.matches(file.file_name().to_str().unwrap_or("")) {
         println!("{}", file.path().display());
+        return true;
     }
+    return false;
 }
 
-fn search_dir(file: &DirEntry, wildcard: &WildMatch) -> () {
+fn search_dir(file: &DirEntry, wildcard: &WildMatch) -> bool {
     if file.file_type().is_dir() && wildcard.matches(file.file_name().to_str().unwrap_or("")) {
         println!("{}", file.path().display());
+        return true;
     }
+    return false;
 }
 
-fn search_all_types(file: &DirEntry, wildcard: &WildMatch) {
+fn search_all_types(file: &DirEntry, wildcard: &WildMatch) -> bool {
     if wildcard.matches(file.file_name().to_str().unwrap_or("")) {
         println!("{}", file.path().display());
+        return true;
     }
+    return false;
 }
 
 fn main() {
@@ -53,7 +59,7 @@ fn main() {
     let starting_dir: &str = &args.starting_path.unwrap_or(".".to_string());
     let search_term: &str = &args.name; // Bound search by tearm by start and end
     let search_type: &str = &args.search_type.unwrap_or("".to_string());
-    let func: &dyn Fn(&DirEntry, &wildmatch::WildMatch) -> () = match search_type {
+    let func: &dyn Fn(&DirEntry, &wildmatch::WildMatch) -> bool = match search_type {
         "f" => &search_file,
         "d" => &search_dir,
         _ => &search_all_types,
@@ -85,3 +91,6 @@ fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod test;
