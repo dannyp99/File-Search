@@ -31,27 +31,29 @@ struct Search {
 }
 
 fn search_file(file: &DirEntry, wildcard: &WildMatch) -> bool {
-    if file.file_type().is_file() && wildcard.matches(file.file_name().to_str().unwrap_or("")) {
+    let is_matching =
+        file.file_type().is_file() && wildcard.matches(file.file_name().to_str().unwrap_or(""));
+    if is_matching {
         println!("{}", file.path().display());
-        return true;
     }
-    return false;
+    return is_matching;
 }
 
 fn search_dir(file: &DirEntry, wildcard: &WildMatch) -> bool {
-    if file.file_type().is_dir() && wildcard.matches(file.file_name().to_str().unwrap_or("")) {
+    let is_matching =
+        file.file_type().is_dir() && wildcard.matches(file.file_name().to_str().unwrap_or(""));
+    if is_matching {
         println!("{}", file.path().display());
-        return true;
     }
-    return false;
+    return is_matching;
 }
 
 fn search_all_types(file: &DirEntry, wildcard: &WildMatch) -> bool {
-    if wildcard.matches(file.file_name().to_str().unwrap_or("")) {
+    let is_matching = wildcard.matches(file.file_name().to_str().unwrap_or(""));
+    if is_matching {
         println!("{}", file.path().display());
-        return true;
     }
-    return false;
+    return is_matching;
 }
 
 fn main() {
