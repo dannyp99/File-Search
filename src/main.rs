@@ -18,7 +18,7 @@ struct Search {
     starting_path: Option<String>,
     #[clap(long)]
     /// The pattern to search for
-    name: String,
+    name: Option<String>,
     #[clap(long = "type")]
     /// The type of search
     search_type: Option<String>,
@@ -59,7 +59,7 @@ fn search_all_types(file: &DirEntry, wildcard: &WildMatch) -> bool {
 fn main() {
     let args: Search = Search::parse();
     let starting_dir: &str = &args.starting_path.unwrap_or(".".to_string());
-    let search_term: &str = &args.name; // Bound search by tearm by start and end
+    let search_term: &str = &args.name.unwrap_or("**".to_string()); // Bound search by tearm by start and end
     let search_type: &str = &args.search_type.unwrap_or("".to_string());
     let func: &dyn Fn(&DirEntry, &wildmatch::WildMatch) -> bool = match search_type {
         "f" => &search_file,
