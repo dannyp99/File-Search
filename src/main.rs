@@ -1,8 +1,10 @@
 extern crate walkdir;
 
+use std::collections::HashSet;
+
 use clap::Parser;
-use regex::Regex;
 use walkdir::{DirEntry, WalkDir};
+use wildmatch::WildMatch;
 
 /// Search for a pattern in a file and display the lines that contain it.
 #[derive(Parser)]
@@ -16,7 +18,7 @@ struct Search {
     starting_path: Option<String>,
     #[clap(long)]
     /// The pattern to search for
-    name: String,
+    name: Option<String>,
     #[clap(long = "type")]
     /// The type of search
     search_type: Option<String>,
@@ -28,42 +30,38 @@ struct Search {
     excluded_paths: Option<String>,
 }
 
-fn string_to_regex(search_term: &str) -> Regex {
-    let regex_search_term: String = if search_term.contains('*') {
-        let replaced_search_term = search_term.replace(".", r"\.").replace("*", "(.*)");
-        "^".to_owned() + replaced_search_term.as_str() + "$"
-    } else {
-        "^".to_owned() + search_term + "$"
-    };
-    let regex = Regex::new(&regex_search_term).unwrap();
-    //println!("Regex search term: {}", regex_search_term);
-    return regex;
-}
-
-fn search_file(file: &DirEntry, regex: &Regex) -> () {
-    if file.file_type().is_file() && regex.is_match(file.file_name().to_str().unwrap_or("")) {
+fn search_file(file: &DirEntry, wildcard: &WildMatch) -> bool {
+    let is_matching =
+        file.file_type().is_file() && wildcard.matches(file.file_name().to_str().unwrap_or(""));
+    if is_matching {
         println!("{}", file.path().display());
     }
+    return is_matching;
 }
 
-fn search_dir(file: &DirEntry, regex: &Regex) -> () {
-    if file.file_type().is_dir() && regex.is_match(file.file_name().to_str().unwrap_or("")) {
+fn search_dir(file: &DirEntry, wildcard: &WildMatch) -> bool {
+    let is_matching =
+        file.file_type().is_dir() && wildcard.matches(file.file_name().to_str().unwrap_or(""));
+    if is_matching {
         println!("{}", file.path().display());
     }
+    return is_matching;
 }
 
-fn search_all_types(file: &DirEntry, regex: &Regex) {
-    if regex.is_match(file.file_name().to_str().unwrap_or("")) {
+fn search_all_types(file: &DirEntry, wildcard: &WildMatch) -> bool {
+    let is_matching = wildcard.matches(file.file_name().to_str().unwrap_or(""));
+    if is_matching {
         println!("{}", file.path().display());
     }
+    return is_matching;
 }
 
 fn main() {
     let args: Search = Search::parse();
     let starting_dir: &str = &args.starting_path.unwrap_or(".".to_string());
-    let search_term: &str = &args.name; // Bound search by tearm by start and end
+    let search_term: &str = &args.name.unwrap_or("**".to_string()); // Bound search by tearm by start and end
     let search_type: &str = &args.search_type.unwrap_or("".to_string());
-    let func: &dyn Fn(&DirEntry, &regex::Regex) -> () = match search_type {
+    let func: &dyn Fn(&DirEntry, &wildmatch::WildMatch) -> bool = match search_type {
         "f" => &search_file,
         "d" => &search_dir,
         _ => &search_all_types,
@@ -73,32 +71,28 @@ fn main() {
         None => 3,
     };
     let exclude_string: &str = &args.excluded_paths.unwrap_or("".to_string());
-    let regex: Regex = string_to_regex(&search_term);
+    let wildcard: WildMatch = WildMatch::new(search_term);
     if exclude_string.is_empty() {
         for file in WalkDir::new(&starting_dir)
             .max_open(max_open)
             .into_iter()
             .filter_map(|file| file.ok())
         {
-            func(&file, &regex);
+            func(&file, &wildcard);
         }
     } else {
-        let exclude_list: Vec<&str> = exclude_string.split(",").collect::<Vec<&str>>();
+        let exclusion_set: HashSet<&str> = exclude_string.split(",").collect::<HashSet<&str>>();
         for file in WalkDir::new(&starting_dir)
             .max_open(max_open)
             .into_iter()
-            .filter_entry(|entry| {
-                for exclude_item in &exclude_list {
-                    if entry.path().starts_with(exclude_item) {
-                        return false;
-                    }
-                }
-                return true;
-            })
+            .filter_entry(|entry| !exclusion_set.contains(entry.file_name().to_str().unwrap_or("")))
         {
             if file.is_ok() {
-                func(&file.unwrap(), &regex);
+                func(&file.unwrap(), &wildcard);
             }
         }
     }
 }
+
+#[cfg(test)]
+mod test;
