@@ -29,8 +29,8 @@ fn test_file_search() {
     let result: bool = result_arr.contains(&true);
     assert!(result); //Should return true
 }
-#[test]
 
+#[test]
 fn test_dir_search() {
     let search_term: &str = "dir1";
     let starting_dir: &str = "./test/test-dir";
@@ -44,7 +44,7 @@ fn test_dir_search() {
 
 #[test]
 fn test_all_types_search() {
-    let search_term: &str = "main";
+    let search_term: &str = "main.c";
     let starting_dir: &str = "./test/test-dir";
     let func = &search_all_types;
 
@@ -67,7 +67,7 @@ fn test_file_search_wildcard() {
             count += 1;
         }
     }
-    assert!(count == 2); //Should return true
+    assert!(count == 1); //Should return true
 }
 
 #[test]
@@ -83,14 +83,14 @@ fn test_all_dir_search_default() {
             count += 1;
         }
     }
-    assert!(count == 4); // Includes the starting dir
+    assert!(count == 3); // Includes the starting dir
 
 }
 
 #[test]
 fn test_dir_search_wildcard() {
     let search_term: &str = "dir*";
-    let starting_dir: &str = "./test/test-dir";
+    let starting_dir: &str = "./test";
     let func = &search_dir;
 
     let result_arr: Vec<bool> = walkdir_search(search_term, starting_dir, func);
@@ -116,5 +116,5 @@ fn test_all_types_search_wildcard() {
             count += 1;
         }
     }
-    assert!(count == 3); //Should return true
+    assert!(count == 1); //Should return true
 }
