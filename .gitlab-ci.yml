@@ -7,7 +7,34 @@
 # See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
 stages:
 - test
+- build
+- publish
+
+
 sast:
   stage: test
 include:
 - template: Security/SAST.gitlab-ci.yml
+
+cargo-test:
+  stage: test
+  image: rust
+  script:
+    - cargo test
+
+cargo-build:
+  stage: build
+  image: rust
+  script:
+    - cargo build --release
+  artifacts:
+    paths:
+      - target/release/file-search
+rustdoc:
+  stage: build
+  image: rust
+  script:
+    - cargo doc
+  artifacts:
+    paths:
+      - target/doc
