@@ -1,0 +1,4 @@
+/target
+*find.txt
+*search.txt
+.*.md

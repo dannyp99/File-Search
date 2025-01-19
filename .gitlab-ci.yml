@@ -29,7 +29,7 @@ cargo-build:
     - cargo build --release
   artifacts:
     paths:
-      - target/release/file-search
+      - target/release/search
 rustdoc:
   stage: build
   image: rust
