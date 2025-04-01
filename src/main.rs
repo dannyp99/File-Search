@@ -30,66 +30,59 @@ struct Search {
     excluded_paths: Option<String>,
 }
 
-fn search_file(file: &DirEntry, wildcard: &WildMatch) -> bool {
-    let is_matching =
-        file.file_type().is_file() && wildcard.matches(file.file_name().to_str().unwrap_or(""));
+fn search(file: &DirEntry, wildcard: &WildMatch, search_type: &str) -> bool {
+    let is_matching: bool = wildcard.matches(file.file_name().to_str().unwrap_or(""));
     if is_matching {
         println!("{}", file.path().display());
     }
-    return is_matching;
+    return match search_type {
+        "f" => file.file_type().is_file() && is_matching,
+        "d" => file.file_type().is_dir() && is_matching,
+        "l" => file.path_is_symlink() && is_matching, //TODO: Add test cases for symbolic links
+        _ => is_matching,
+    };
 }
 
-fn search_dir(file: &DirEntry, wildcard: &WildMatch) -> bool {
-    let is_matching =
-        file.file_type().is_dir() && wildcard.matches(file.file_name().to_str().unwrap_or(""));
-    if is_matching {
-        println!("{}", file.path().display());
+fn valid_file(exclusion_set: &HashSet<&str>, file_path: &str) -> bool {
+    let mut wild_match: WildMatch;
+    for exclusion_item in exclusion_set {
+        if exclusion_item.starts_with('.') || exclusion_item.starts_with('/') {
+            wild_match = WildMatch::new(&(exclusion_item.to_string() + "/*"))
+        } else {
+            wild_match = WildMatch::new(&("./".to_owned() + exclusion_item + "/*"));
+        }
+        if wild_match.matches(file_path) {
+            return false;
+        }
     }
-    return is_matching;
-}
-
-fn search_all_types(file: &DirEntry, wildcard: &WildMatch) -> bool {
-    let is_matching = wildcard.matches(file.file_name().to_str().unwrap_or(""));
-    if is_matching {
-        println!("{}", file.path().display());
-    }
-    return is_matching;
+    return true;
 }
 
 fn main() {
     let args: Search = Search::parse();
-    let starting_dir: &str = &args.starting_path.unwrap_or(".".to_string());
-    let search_term: &str = &args.name.unwrap_or("**".to_string()); // Bound search by tearm by start and end
-    let search_type: &str = &args.search_type.unwrap_or("".to_string());
-    let func: &dyn Fn(&DirEntry, &wildmatch::WildMatch) -> bool = match search_type {
-        "f" => &search_file,
-        "d" => &search_dir,
-        _ => &search_all_types,
-    };
+    let starting_dir: &str = &args.starting_path.unwrap_or(".".to_owned());
+    let cleaned_starting_dir: &str =
+        if starting_dir.starts_with('.') || starting_dir.starts_with('/') {
+            starting_dir
+        } else {
+            &("./".to_owned() + starting_dir)
+        };
+    let search_term: &str = &args.name.unwrap_or("**".to_owned()); // Bound search by tearm by start and end
+    let search_type: &str = &args.search_type.unwrap_or("".to_owned());
     let max_open: usize = match args.max_open {
         Some(x) => x,
         None => 3,
     };
     let exclude_string: &str = &args.excluded_paths.unwrap_or("".to_string());
     let wildcard: WildMatch = WildMatch::new(search_term);
-    if exclude_string.is_empty() {
-        for file in WalkDir::new(&starting_dir)
-            .max_open(max_open)
-            .into_iter()
-            .filter_map(|file| file.ok())
-        {
-            func(&file, &wildcard);
-        }
-    } else {
-        let exclusion_set: HashSet<&str> = exclude_string.split(",").collect::<HashSet<&str>>();
-        for file in WalkDir::new(&starting_dir)
-            .max_open(max_open)
-            .into_iter()
-            .filter_entry(|entry| !exclusion_set.contains(entry.file_name().to_str().unwrap_or("")))
-        {
-            if file.is_ok() {
-                func(&file.unwrap(), &wildcard);
-            }
+    let exclusion_set: HashSet<&str> = exclude_string.split(",").collect::<HashSet<&str>>();
+    for file in WalkDir::new(&cleaned_starting_dir)
+        .max_open(max_open)
+        .into_iter()
+        .filter_map(|file| file.ok())
+    {
+        if valid_file(&exclusion_set, file.path().to_str().unwrap_or("")) {
+            search(&file, &wildcard, &search_type);
         }
     }
 }
